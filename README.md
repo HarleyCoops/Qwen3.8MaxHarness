@@ -53,6 +53,18 @@ This is different from the Qwen **Coding Plan** product (keys with prefix `sk-sp
 
 This is the **verified** path: run it **inside WSL (Ubuntu)**, not raw PowerShell or cmd. Install **Node.js 22+** in WSL (`node -v` should report 22 or newer).
 
+### How oh-my-cli loads model config
+
+oh-my-cli resolves model config in this order (highest first):
+
+1. **Real process env:** `OPENAI_MODEL`, `OPENAI_API_KEY`, `OPENAI_BASE_URL`
+2. **Trusted workspace `.env`** at `<cwd>/.env` (for the clone, that is `~/oh-my-cli/.env`) — only after `--trust` or `--trust-workspace`
+3. **User settings** `~/.oh-my-cli/settings.json` with `model.name` / `model.baseUrl` / `model.apiKeyEnv`
+
+`~/.oh-my-cli/` holds `settings.json` and sessions. It is **not** an auto-loaded `.env` location for model config.
+
+**Do not put keys in `~/.oh-my-cli/.env`.** That path is ignored. Keys go in the clone workspace `.env` or in the shell.
+
 ### 1. Clone, build, and link oh-my-cli
 
 ```bash
@@ -66,52 +78,13 @@ npm link
 
 `npm link` puts `oh-my-cli` on your PATH. Without it, run `node dist/index.js` from the clone instead.
 
-### 2. Point oh-my-cli at Qwen3.8-Max (Token Plan)
+### 2. Write user settings (model name + base URL)
 
-Environment variables have the **highest** precedence. The verified layout is a user env file (never commit real keys):
+Non-secret model config belongs in `~/.oh-my-cli/settings.json` (never the raw key):
 
 ```bash
 mkdir -p ~/.oh-my-cli
-cat > ~/.oh-my-cli/.env <<'EOF'
-OPENAI_API_KEY=sk-…your Token Plan key…
-OPENAI_BASE_URL=https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1
-OPENAI_MODEL=qwen3.8-max
-EOF
-chmod 600 ~/.oh-my-cli/.env
-```
-
-Use a real Token Plan key in place of the placeholder. Keys look like `sk-…` or `sk-ws-…`. Coding Plan keys (`sk-sp-…`) are a different product and will 401 against this URL.
-
-A copy-paste template with the same defaults lives in `.env.example` in this repo.
-
-### 3. Check the install
-
-```bash
-oh-my-cli --help
-oh-my-cli --doctor
-oh-my-cli --preflight
-oh-my-cli --trust-workspace
-```
-
-`--doctor` checks install/runtime readiness. `--preflight` prints a **redacted** summary of model, endpoint host, settings source, and credential env var name (never the secret). `--trust-workspace` marks the current folder as trusted so the agent can work there under your approval policy.
-
-Optional live ping:
-
-```bash
-oh-my-cli -p "Reply with exactly: pong" --approval-mode default
-```
-
-### Notes for this path
-
-- Stay in WSL. PowerShell/cmd can have a different Node, PATH, and home directory; the files above live under the **Linux** home (`~/.oh-my-cli`).
-- Prefer the Token Plan MaaS URL above. Switch to dashscope-intl or a workspace-specific MaaS URL only when that is what the key was issued for.
-- Optional parallel: the official Qwen Code CLI (`qwen`) can use the same Token Plan. This repo documents **oh-my-cli**.
-
-### Alternative: user settings file
-
-You can keep non-secret model config in `~/.oh-my-cli/settings.json` and only export the key. See `settings.example.json` in this repo. Example:
-
-```json
+cat > ~/.oh-my-cli/settings.json <<'EOF'
 {
   "model": {
     "baseUrl": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
@@ -121,23 +94,74 @@ You can keep non-secret model config in `~/.oh-my-cli/settings.json` and only ex
   "mcpServers": {},
   "extensions": {}
 }
+EOF
 ```
 
-Then export the key named by `apiKeyEnv`:
+Or copy `settings.example.json` from this repo into that path. Never put the raw key in this file.
+
+### 3. Write secrets into the clone workspace `.env`
+
+Put `OPENAI_*` in the **clone**, not under `~/.oh-my-cli/`:
 
 ```bash
-export DASHSCOPE_API_KEY="sk-…"
+cat > ~/oh-my-cli/.env <<'EOF'
+OPENAI_API_KEY=sk-…your Token Plan key…
+OPENAI_BASE_URL=https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1
+OPENAI_MODEL=qwen3.8-max
+EOF
+chmod 600 ~/oh-my-cli/.env
 ```
 
-Copy the template:
+Use a real Token Plan key in place of the placeholder. Keys look like `sk-…` or `sk-ws-…`. Coding Plan keys (`sk-sp-…`) are a different product and will 401 against this URL.
+
+A copy-paste template with the same defaults lives in `.env.example` in this repo. Copy it to `~/oh-my-cli/.env` (the workspace root you run the CLI from).
+
+Then persist trust so oh-my-cli will read that `.env` (must be run from the clone):
 
 ```bash
-mkdir -p ~/.oh-my-cli
-cp settings.example.json ~/.oh-my-cli/settings.json
-# edit if needed — never put the raw key in this file
+cd ~/oh-my-cli
+oh-my-cli --trust-workspace
 ```
 
-A ready-to-edit env template also lives in `.env.example` (copy to `.env` only in a trusted workspace; `.env` is gitignored).
+Without `--trust` / `--trust-workspace`, the workspace `.env` is not loaded.
+
+### Or export `OPENAI_*` in the shell
+
+Process env always wins. You can skip the workspace `.env` if you export these every session:
+
+```bash
+export OPENAI_API_KEY="sk-…"
+export OPENAI_BASE_URL="https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"
+export OPENAI_MODEL="qwen3.8-max"
+```
+
+If you use `apiKeyEnv` in `settings.json` instead of `OPENAI_API_KEY`, export that name (for example `DASHSCOPE_API_KEY`).
+
+### 4. Check the install
+
+Run these from the clone so `<cwd>/.env` is `~/oh-my-cli/.env`:
+
+```bash
+cd ~/oh-my-cli
+oh-my-cli --help
+oh-my-cli --doctor
+oh-my-cli --preflight
+```
+
+`--doctor` checks install/runtime readiness. `--preflight` prints a **redacted** summary of model, endpoint host, settings source, and credential env var name (never the secret). `--trust-workspace` (step 3) marks the current folder as trusted so the workspace `.env` is loaded and the agent can work there under your approval policy.
+
+Optional live ping:
+
+```bash
+oh-my-cli -p "Reply with exactly: pong" --approval-mode default
+```
+
+### Notes for this path
+
+- Stay in WSL. PowerShell/cmd can have a different Node, PATH, and home directory. `settings.json` lives under the **Linux** home (`~/.oh-my-cli/settings.json`). The secret `.env` lives in the **clone** (`~/oh-my-cli/.env`).
+- **Do not** write `~/.oh-my-cli/.env` — oh-my-cli never loads that path for model config.
+- Prefer the Token Plan MaaS URL above. Switch to dashscope-intl or a workspace-specific MaaS URL only when that is what the key was issued for.
+- Optional parallel: the official Qwen Code CLI (`qwen`) can use the same Token Plan. This repo documents **oh-my-cli**.
 
 ---
 
@@ -221,7 +245,7 @@ That contract lives in **oh-my-cli**, not in this setup repo.
 ## What this repo is NOT
 
 - **Not a fork** of oh-my-cli — install and update oh-my-cli from its own repo.
-- **No secrets** — never commit `.env`, real API keys, or filled-in settings with credentials. Only the *name* of an env var belongs in `settings.json` (`apiKeyEnv`).
+- **No secrets** — never commit `.env`, real API keys, or filled-in settings with credentials. Only the *name* of an env var belongs in `settings.json` (`apiKeyEnv`). Do **not** put keys in `~/.oh-my-cli/.env` (ignored); use `~/oh-my-cli/.env` or process env.
 - **Not the Qwen Coding Plan** — Coding Plan keys (`sk-sp-…` / coding-intl) are a different product. For `qwen3.8-max` on Model Studio Singapore Token Plan, use a Token Plan key (`sk-…` or `sk-ws-…`) and the Token Plan MaaS URL above (or dashscope-intl / a matching workspace MaaS URL). A `401` often means the wrong key type or a mismatched base URL.
 
 ---
@@ -231,8 +255,8 @@ That contract lives in **oh-my-cli**, not in this setup repo.
 | File | Purpose |
 |------|---------|
 | `README.md` | This guide |
-| `.env.example` | Env var template (no real keys) |
-| `settings.example.json` | Template for `~/.oh-my-cli/settings.json` |
+| `.env.example` | Env var template for the **clone** workspace `.env` (e.g. `~/oh-my-cli/.env`). Not `~/.oh-my-cli/.env`. No real keys. |
+| `settings.example.json` | Template for `~/.oh-my-cli/settings.json` (model name + baseUrl; no raw key) |
 | `.gitignore` | Ignores `.env`, secrets, and local build artifacts |
 | `LICENSE` | Apache-2.0 (same as oh-my-cli) |
 
