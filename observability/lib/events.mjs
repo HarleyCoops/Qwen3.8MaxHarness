@@ -1,4 +1,4 @@
-import { sanitize, TITLE_BOUND, DETAIL_BOUND } from "./redact.mjs";
+import { redactHomePath, sanitize, TITLE_BOUND, DETAIL_BOUND } from "./redact.mjs";
 
 const MUTATING = new Set(["write", "edit", "shell"]);
 
@@ -74,7 +74,7 @@ export function parseSessionJsonl(raw, { locked = false } = {}) {
 
     if (rec && rec.meta === true) {
       const title = rec.model ? `session · ${rec.model}` : "session meta";
-      const bits = [rec.workspace, rec.profile].filter(Boolean).join(" · ");
+      const bits = [rec.workspace ? redactHomePath(rec.workspace) : "", rec.profile].filter(Boolean).join(" · ");
       push(eventBase(`${i}:meta`, "meta", "session-meta", title, bits, ["meta"]));
       continue;
     }

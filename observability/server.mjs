@@ -100,14 +100,16 @@ function pushClient(client, replay) {
   const snap = snapshot(client.explicit);
   const sig = signature(snap);
   if (!snap.session) {
-    sendSse(client.res, {
-      cls: "ctl",
-      kind: "idle",
-      title: "No session",
-      detail: "oh-my-cli is not writing a session under ~/.oh-my-cli/sessions/. Empty state is expected.",
-      badges: ["idle"],
-      sessions: snap.sessions,
-    });
+    if (replay || sig !== client.lastSig) {
+      sendSse(client.res, {
+        cls: "ctl",
+        kind: "idle",
+        title: "No session",
+        detail: "oh-my-cli is not writing a session under ~/.oh-my-cli/sessions/. Empty state is expected.",
+        badges: ["idle"],
+        sessions: snap.sessions,
+      });
+    }
     client.lastSig = sig;
     client.lastCount = 0;
     return;
@@ -117,8 +119,8 @@ function pushClient(client, replay) {
       cls: "ctl",
       kind: "hello",
       title: snap.session.shortId,
-      detail: `${snap.reason} · ${snap.session.lockAlive ? "locked" : "replay"}`,
-      badges: [snap.reason, snap.session.lockAlive ? "locked" : "unlocked"],
+      detail: `${snap.reason} · ${snap.session.lockAlive ? "live lock" : "unlocked replay"}`,
+      badges: [snap.reason, snap.session.lockAlive ? "live-lock" : "replay"],
       session: snap.session,
       sessions: snap.sessions,
       summary: snap.summary,
