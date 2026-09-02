@@ -16,6 +16,7 @@ How the terminal self-learns via Qwen is explained in [How this terminal self-le
 | Target CLI | https://github.com/HarleyCoops/oh-my-cli |
 | Model | qwen3.8-max |
 | Provider | Alibaba Model Studio (Token Plan / DashScope intl / Singapore), OpenAI-compatible API |
+| Observability | Loopback console at `:4330` that tails `~/.oh-my-cli/sessions/` (not `--delivery-web`) |
 
 This repo is not a fork of oh-my-cli. Install oh-my-cli separately; use only the env and settings examples here.
 
@@ -164,9 +165,87 @@ oh-my-cli --resume <session-id>
 oh-my-cli --continue
 ```
 
-Approval modes: `default` (prompt for mutating tools), `auto-edit` (allow write/edit), `yolo` (allow all — unsafe). Prefer `default` until you trust the workspace.
+Approval modes in one line: `default` prompts for every mutating tool; `auto-edit` still prompts for **shell**; `yolo` allows all tools (unsafe). Headless `-p` has no TTY, so `default` / `auto-edit` **deny** anything that still needs a prompt. For multi-day unattended work see [Approval modes for long / multi-day runs](#approval-modes-for-long--multi-day-runs). To watch a long task instead of sitting on the TTY, start the [observability layer](#observability-layer-long-running-tasks) on `:4330`.
 
 Full CLI docs: [oh-my-cli README](https://github.com/HarleyCoops/oh-my-cli/blob/main/README.md).
+
+---
+
+## Observability layer (long-running tasks)
+
+This repo adds a small **ops console** on top of [oh-my-cli](https://github.com/HarleyCoops/oh-my-cli): it tails real session JSONL and streams structured events into a dense 2D tabbed UI, plus one Three.js **Graph** tab for a spatial mission view.
+
+It is **not** a fork of oh-my-cli and it does **not** replace `--delivery-web`. That flag is a local **demo** board (`http://127.0.0.1:4317`). This layer watches **live** sessions (`http://127.0.0.1:4330`).
+
+| Layer | Role |
+|-------|------|
+| Token Plan Qwen (`qwen3.8-max`) | Model / brain |
+| oh-my-cli agent | Tools, approvals, folder trust, session writer |
+| `~/.oh-my-cli/sessions/*.jsonl` (+ `*.lock`) | Durable transcript |
+| `observability/` app | SSE tail → Live / Graph / Tools / Approvals / Sessions |
+
+### WSL run path
+
+Clone this harness repo, then in WSL:
+
+```bash
+cd ~/Qwen3.8MaxHarness/observability   # or wherever you cloned this repo
+npm i
+npm run build
+npm start
+```
+
+Open [http://127.0.0.1:4330](http://127.0.0.1:4330) while `oh-my-cli -p …` runs in another terminal. The server binds **loopback only**. If oh-my-cli is not running, the console stays idle (empty state); Sessions still lists any existing JSONL.
+
+Details, env overrides, and endpoints: [`observability/README.md`](observability/README.md). Upstream CLI: https://github.com/HarleyCoops/oh-my-cli
+
+---
+
+## Approval modes for long / multi-day runs
+
+oh-my-cli gates mutating tools (`write`, `edit`, `shell`, and MCP connect) with `--approval-mode`. Read tools never need approval. This is the same behavior as upstream — summarized here because a headless long run will **stop or refuse work** if you pick the wrong mode.
+
+| Mode | Mutating files (`write` / `edit`) | `shell` (and MCP, which is gated like shell) | No TTY (typical `oh-my-cli -p …`) |
+|------|-----------------------------------|----------------------------------------------|-----------------------------------|
+| `default` | Prompt | Prompt | **Deny** every mutating tool |
+| `auto-edit` | Auto-allow | **Still prompts** | Files go through; **shell / MCP denied** |
+| `yolo` | Auto-allow | Auto-allow | Auto-allow (unsafe) |
+
+`auto-edit` is easy to misread: it does **not** make an unattended run autonomous. Without a TTY it still **denies shell**. That is why a “set it and forget it” Yukon-style job sits there or fails closed until you switch to `yolo` (or stay at the keyboard).
+
+`yolo` is powerful and dangerous. It will write files and run shell with no prompt. Use it only on a workspace you already trust, and **cap the run**.
+
+Even under `yolo`:
+
+- **Command policy still denies** some shell shapes (destructive git, credential access, path escape, destructive `rm`, …). Policy runs **before** approval; yolo cannot bypass a denial.
+- **Folder trust is not widened.** `--approval-mode yolo` cannot make an untrusted folder trusted. Persist trust with `--trust-workspace`, or pass `--trust` for this run only. Prefer `--enforce-folder-trust` so an untrusted tree fail-closes instead of surprising you.
+
+Recommend spend and operator caps on any unattended job (`--budget`, `--max-turns`, `--max-wall-time`; optional `--max-tool-calls`). Whichever bound trips first wins. Check posture first: `oh-my-cli --trust-posture --approval-mode yolo`.
+
+### Copy-paste: long WSL run + live watch
+
+Terminal A — observability (no keys involved):
+
+```bash
+cd ~/Qwen3.8MaxHarness/observability
+npm i
+npm run build
+npm start
+# open http://127.0.0.1:4330
+```
+
+Terminal B — unattended `-p` (unsafe: yolo). Run this **inside the trusted workspace**, after `oh-my-cli --trust-workspace` or with `--trust`:
+
+```bash
+oh-my-cli --trust --approval-mode yolo \
+  --budget 5 --max-turns 80 --max-wall-time 8h \
+  --output json \
+  -p "Continue the current workstream: inspect the repo, make the next bounded change, verify, stop when the objective is met."
+```
+
+`--output json` is oh-my-cli’s headless event stream on stdout. The observability app does **not** read that pipe — it tails `~/.oh-my-cli/sessions/*.jsonl`. Watch [http://127.0.0.1:4330](http://127.0.0.1:4330) instead of babysitting approval prompts.
+
+Do not use `yolo` on a folder you have not inspected. Prefer `default` whenever you can sit with the TTY.
 
 ---
 
@@ -221,6 +300,7 @@ That contract lives in **oh-my-cli**, not in this setup repo.
 ## What this repo is NOT
 
 - **Not a fork** of oh-my-cli — install and update oh-my-cli from its own repo.
+- **Not `--delivery-web`** — that oh-my-cli demo board stays on `:4317`. The harness observability console on `:4330` only tails session JSONL.
 - **No secrets** — never commit `.env`, real API keys, or filled-in settings with credentials. Only the *name* of an env var belongs in `settings.json` (`apiKeyEnv`).
 - **Not the Qwen Coding Plan** — Coding Plan keys (`sk-sp-…` / coding-intl) are a different product. For `qwen3.8-max` on Model Studio Singapore Token Plan, use a Token Plan key (`sk-…` or `sk-ws-…`) and the Token Plan MaaS URL above (or dashscope-intl / a matching workspace MaaS URL). A `401` often means the wrong key type or a mismatched base URL.
 
@@ -231,6 +311,7 @@ That contract lives in **oh-my-cli**, not in this setup repo.
 | File | Purpose |
 |------|---------|
 | `README.md` | This guide |
+| `observability/` | Live session watch console (SSE + tabbed UI + Three.js graph) |
 | `.env.example` | Env var template (no real keys) |
 | `settings.example.json` | Template for `~/.oh-my-cli/settings.json` |
 | `.gitignore` | Ignores `.env`, secrets, and local build artifacts |

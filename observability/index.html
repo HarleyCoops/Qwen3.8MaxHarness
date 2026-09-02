@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>oh-my-cli · observability</title>
+  </head>
+  <body>
+    <div id="app">
+      <header class="top">
+        <div class="brand">
+          <span class="mark">OMC</span>
+          <div>
+            <h1>observability</h1>
+            <p class="sub">session JSONL tail · loopback :4330</p>
+          </div>
+        </div>
+        <div id="status" class="status idle">idle</div>
+        <dl class="counters" id="counters">
+          <div><dt>events</dt><dd id="c-events">0</dd></div>
+          <div><dt>tools</dt><dd id="c-tools">0</dd></div>
+          <div><dt>mcp</dt><dd id="c-mcp">0</dd></div>
+          <div><dt>approvals</dt><dd id="c-approvals">0</dd></div>
+          <div><dt>errors</dt><dd id="c-errors">0</dd></div>
+        </dl>
+      </header>
+      <nav class="tabs" role="tablist">
+        <button type="button" class="tab on" data-tab="live">Live</button>
+        <button type="button" class="tab" data-tab="graph">Graph</button>
+        <button type="button" class="tab" data-tab="tools">Tools / MCP</button>
+        <button type="button" class="tab" data-tab="approvals">Approvals</button>
+        <button type="button" class="tab" data-tab="sessions">Sessions</button>
+      </nav>
+      <main>
+        <section id="panel-live" class="panel on">
+          <div class="filters" id="live-filters">
+            <button type="button" class="chip on" data-filter="all">all</button>
+            <button type="button" class="chip" data-filter="tool">tools</button>
+            <button type="button" class="chip" data-filter="mcp">mcp</button>
+            <button type="button" class="chip" data-filter="approval">approvals</button>
+            <button type="button" class="chip" data-filter="error">errors</button>
+          </div>
+          <div id="empty-live" class="empty">
+            No live session. Start <code>oh-my-cli -p …</code> in another terminal, or open a past JSONL from Sessions.
+          </div>
+          <ol id="live-list" class="log"></ol>
+        </section>
+        <section id="panel-graph" class="panel">
+          <div id="empty-graph" class="empty overlay">Graph waits for turns, tools, and MCP nodes.</div>
+          <div id="graph-root" class="graph"></div>
+        </section>
+        <section id="panel-tools" class="panel">
+          <div class="split">
+            <div>
+              <h2>tool histogram</h2>
+              <ul id="tool-hist" class="bars"></ul>
+            </div>
+            <div>
+              <h2>mcp histogram</h2>
+              <ul id="mcp-hist" class="bars"></ul>
+            </div>
+          </div>
+          <h2>recent calls</h2>
+          <ol id="tool-recent" class="log compact"></ol>
+        </section>
+        <section id="panel-approvals" class="panel">
+          <div id="empty-approvals" class="empty">No approval-wait or approval-tagged events in this session.</div>
+          <ol id="approval-list" class="log"></ol>
+        </section>
+        <section id="panel-sessions" class="panel">
+          <div id="empty-sessions" class="empty">No JSONL under ~/.oh-my-cli/sessions/. That is fine when oh-my-cli is not running.</div>
+          <table class="grid">
+            <thead>
+              <tr>
+                <th>id</th>
+                <th>lock</th>
+                <th>model</th>
+                <th>workspace</th>
+                <th>mtime</th>
+                <th>bytes</th>
+              </tr>
+            </thead>
+            <tbody id="session-rows"></tbody>
+          </table>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "name": "omc-observability",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Ops console that tails oh-my-cli session JSONL for long-running harness tasks",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "vite": "^6.2.0"
+  }
+}
