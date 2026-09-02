@@ -1,6 +1,6 @@
 {
   "model": {
-    "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+    "baseUrl": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
     "name": "qwen3.8-max",
     "apiKeyEnv": "DASHSCOPE_API_KEY"
   },
