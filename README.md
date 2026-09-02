@@ -170,6 +170,25 @@ Full CLI docs: [oh-my-cli README](https://github.com/HarleyCoops/oh-my-cli/blob/
 
 ---
 
+## Web delivery board
+
+After Token Plan env works (`OPENAI_MODEL=qwen3.8-max`) and [Check the install](#3-check-the-install) succeeds, review the post-Desktop Remote Control and Dynamic Workflow surfaces on separate browser-native feature pages, with their defining behavior, live interactions, and GitHub delivery evidence. Remote Control shows the connected phone and secure session handshake; Dynamic Workflow shows a branching, parallel execution graph with an approval gate.
+
+From a trusted workspace (the same folder you marked with `--trust-workspace`):
+
+```bash
+oh-my-cli --delivery-web
+# open http://127.0.0.1:4317
+```
+
+The server listens on the loopback interface only. Choose another available loopback port with `--web-port <port>`. Open `/remote-control` or `/dynamic-workflow` directly to show one feature. The pages contain no Computer Use demo and do not expose credentials, settings, workspace paths, or a general file server.
+
+On WSL, keep `oh-my-cli` running in Ubuntu and open the loopback URL in a Windows browser: http://127.0.0.1:4317
+
+Upstream: [oh-my-cli Web delivery board](https://github.com/HarleyCoops/oh-my-cli#web-delivery-board)
+
+---
+
 ## How this terminal self-learns via Qwen
 
 Two layers, one model. Qwen3.8-Max is the brain; oh-my-cli is the hands and the rules.
