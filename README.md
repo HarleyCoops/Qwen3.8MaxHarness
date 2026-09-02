@@ -6,6 +6,8 @@ The verified path below is **Windows WSL (Ubuntu)** with Node 22+ and a Token Pl
 
 How the terminal self-learns via Qwen is explained in [How this terminal self-learns via Qwen](#how-this-terminal-self-learns-via-qwen). After you clone oh-my-cli, read the governance contract locally (`less ~/oh-my-cli/AUTONOMY.md`) or on GitHub: https://github.com/HarleyCoops/oh-my-cli/blob/main/AUTONOMY.md
 
+Once the Token Plan path below works, the [Full surface map](#full-surface-map) inventories every launch surface, session tool, safety gate, and CI flag oh-my-cli exposes — not just install.
+
 ---
 
 ## What this is
@@ -166,6 +168,8 @@ oh-my-cli --continue
 
 Approval modes: `default` (prompt for mutating tools), `auto-edit` (allow write/edit), `yolo` (allow all — unsafe). Prefer `default` until you trust the workspace.
 
+Those three commands are the daily loop. The [Full surface map](#full-surface-map) lists the rest of the product.
+
 Full CLI docs: [oh-my-cli README](https://github.com/HarleyCoops/oh-my-cli/blob/main/README.md).
 
 ---
@@ -215,6 +219,144 @@ less ~/oh-my-cli/AUTONOMY.md
 Same file on GitHub: [AUTONOMY.md](https://github.com/HarleyCoops/oh-my-cli/blob/main/AUTONOMY.md)
 
 That contract lives in **oh-my-cli**, not in this setup repo.
+
+---
+
+## Full surface map
+
+Install and [Daily use](#daily-use) get you a Token Plan REPL. oh-my-cli is a larger product: four launch surfaces, a durable session store, a safety plane, a headless CI kit, extension contracts, and the governed loop summarized [above](#how-this-terminal-self-learns-via-qwen). This map inventories what ships so a Qwen3.8-Max Token Plan setup is not mistaken for “install + chat.”
+
+Authoritative detail: [oh-my-cli README](https://github.com/HarleyCoops/oh-my-cli/blob/main/README.md). Flags below match that repo’s `main`.
+
+### Launch surfaces
+
+| Surface | How you open it | What it is |
+|---------|-----------------|------------|
+| Interactive REPL | `oh-my-cli` | Full-screen / readline shell. Mid-stream `/status`, `/model`, `/settings`, `/tools`, `/capabilities`, `/continuity`, `/help` stay read-only. |
+| Non-interactive | `oh-my-cli -p "…"` | One-shot (or `--continue` follow-up) turn. Pair with `--output json` for CI. |
+| Web delivery board | `oh-my-cli --delivery-web` | Loopback-only HTTP server at [http://127.0.0.1:4317](http://127.0.0.1:4317). Routes: `/remote-control`, `/dynamic-workflow`. Other port: `--web-port <n>`. No credentials, settings, workspace paths, or file server. |
+| Electron Desktop | `npm run desktop` from the **oh-my-cli** clone | Native shell (View → Zoom, 50–200%). Same agent, different window. |
+
+On WSL, keep `oh-my-cli` in Ubuntu and open the loopback URL in a Windows browser. Upstream how-to: [oh-my-cli Web delivery board](https://github.com/HarleyCoops/oh-my-cli#web-delivery-board).
+
+### Sessions
+
+JSONL under `~/.oh-my-cli/sessions/`. Most session flags take an exact id **or** the user-owned name from `--rename-session`. Exact id always wins; ambiguous names fail closed.
+
+| Job | Flags |
+|-----|--------|
+| Find / resume | `--list-sessions` (`--filter`, `--include-archived`, `--workspace-scoped`), `--browse-sessions`, `--resume <id-or-name>`, `--continue` (latest healthy session for this workspace) |
+| Name / keep / hide / branch | `--rename-session` + `--session-name`, `--pin-session` / `--unpin-session`, `--archive-session` / `--unarchive-session`, `--fork-session` |
+| Compact | `--compact`, `--compact-threshold` (or `OMC_COMPACT_THRESHOLD`) — sidecar only; original transcript stays |
+| Share vs move | `--export-session` — redacted Markdown + manifest (safe to share). `--bundle-session` / `--bundle-store` — lossless, **unredacted** backup between *your* stores; restore with `--restore-session` / `--restore-store`; check with `--verify-bundle` |
+| Undo a turn | `--undo-turn` / `--redo-turn` (`--dry-run` previews). Restores only that turn’s files + transcript |
+| Side question | `--side-question "…" --session <id-or-name>` or `/ask` — read-only, nothing persisted |
+| Notes / memory / journals | `--annotate-session` + `--note`, `--session-notes`, `--search-notes`; `--memory-add` / `--memory-list` / `--memory-forget`; `--session-journal` / `--workspace-journal` |
+| Return-to-work / store health | `--attention` (workspace-scoped “what needs action”); `--store-doctor` (health + storage + stale census). Both accept `--strict` for a 0/1 exit |
+
+Also useful: `--inspect-session`, `--session-stats`, `--salvage-session` (corrupt → new id; original untouched), `--stale-sessions` / `--archive-stale`.
+
+### Safety
+
+Approval modes are subordinate to folder trust. `yolo` cannot widen an untrusted workspace. Command policy runs **before** approval and cannot be bypassed.
+
+| Gate | What it does |
+|------|----------------|
+| Approval modes | `default` — prompt for mutating tools (deny without TTY). `auto-edit` — allow `write`/`edit`, still prompt for `shell`. `yolo` — allow all (unsafe). Reads never prompt. |
+| Spoof-resistant preview | Approval UI shows the command and paths with bidi / zero-width / look-alike characters replaced by `[U+XXXX]` markers |
+| Folder trust | Untrusted by default. `--trust` (this run) or `--trust-workspace` (persist in `~/.oh-my-cli/trust.json`). `--trust-info` / `--trust-posture` inspect. `--enforce-folder-trust` (or `OMC_ENFORCE_FOLDER_TRUST=1`) denies mutating tools when untrusted |
+| Command policy | Offline classify/deny of dangerous shell shapes (`destructive_git`, credential paths, path escape, `rm -r` at `/` or `~`, device overwrite). `--command-policy "…"` evaluates one command |
+| Run budgets | `--budget <usd>` / `OMC_SPEND_BUDGET_USD`; `--max-turns`; `--max-wall-time`; `--max-tool-calls` — stop at the next round boundary |
+
+Prefer `--approval-mode default` on Token Plan until the workspace is trusted.
+
+### Automation / CI kit
+
+Headless path: `-p` + `--output json` (versioned NDJSON). `--summary` / `--summary-out` write a privacy-safe run record; `--baseline` + `--candidate` score two summaries; `--recover` resumes from a checkpoint. `--export-evidence` / `--verify-evidence` move a signed digest bundle (metadata only — no prompts or secrets). `--create-worktree` / `--clean-worktree` lease a collision-safe git worktree per agent.
+
+Read-only (or bounded) task kit — the same verbs the autonomy loop uses:
+
+| Flag | Role |
+|------|------|
+| `--doctor` | Install / platform readiness |
+| `--readiness` | Repo ready for a blocked task? |
+| `--repo-map` | Ranked file + symbol map (`--map-tokens`) |
+| `--plan <task>` | Bounded execution plan |
+| `--verify-task` | Canonical verify commands, pass/fail |
+| `--review-change` | Head-bound review vs `--base` |
+| `--ci-handoff` | Verify + review brief |
+| `--delivery-brief` | Plan + verify + review + handoff + `--ci-result` |
+
+### Extensions
+
+Declared in user-owned `~/.oh-my-cli/settings.json` only — a project file cannot install them. Inspect, then invoke once:
+
+| Surface | Inspect | Invoke |
+|---------|---------|--------|
+| Provider | `--provider-contract` (`--provider <id>`) | `--invoke-provider` (`--provider-prompt`) |
+| MCP | `--mcp-contract` (`--server <id>`) | `--invoke-mcp` (`--mcp-tool`, `--mcp-arg`) |
+| Tool extension | `--tool-contract` (`--tool <id>`) | `--invoke-tool` |
+| Workflows | `--list-workflows` | `--run-workflow <name>` |
+| Hooks | `--list-hooks` | `PreToolUse` deny-only gate (never relaxes approval) |
+| Model profiles | `--list-profiles` | `--profile <name>` (Token Plan `qwen3.8-max` is one profile among others) |
+
+`--discover-extensions` and `--extension-compat` are the redacted inventories. Invokes honor approval mode, command policy, workspace confinement, and a hard timeout (`--invoke-timeout`).
+
+### Built-in tools
+
+File and search tools stay inside the workspace (symlink escapes rejected). Shell is cwd-confined and policy-gated.
+
+| Tool | Kind | Notes |
+|------|------|--------|
+| `read` / `list` / `glob` / `grep` | read | Never require approval |
+| `write` / `edit` | mutate-file | Approval in `default` |
+| `shell` | mutate-shell | `/bin/bash`; command policy then approval; 30s default / 120s max; 1 MiB output cap |
+
+### Self-learning / autonomy
+
+The intake → lease → implement → evidence-gate loop is already described in [How this terminal self-learns via Qwen](#how-this-terminal-self-learns-via-qwen). The Token Plan REPL is that daily agent layer; the contract is [AUTONOMY.md](https://github.com/HarleyCoops/oh-my-cli/blob/main/AUTONOMY.md) in the **oh-my-cli** repo (`less ~/oh-my-cli/AUTONOMY.md` after clone). This harness repo does not host it.
+
+### Command cheat-sheet
+
+```bash
+# Surfaces
+oh-my-cli
+oh-my-cli -p "Summarize the README" --approval-mode default
+oh-my-cli --delivery-web                 # http://127.0.0.1:4317
+# from ~/oh-my-cli after npm install / npm run build:
+npm run desktop
+
+# Sessions
+oh-my-cli --list-sessions --filter auth
+oh-my-cli --continue
+oh-my-cli --rename-session <id> --session-name "auth refactor"
+oh-my-cli --pin-session <id>
+oh-my-cli --archive-session <id>
+oh-my-cli --fork-session <id>
+oh-my-cli --compact <id>
+oh-my-cli --export-session <id> --out ./exports
+oh-my-cli --undo-turn <id> --dry-run
+oh-my-cli --side-question "which test runner?" --session <id>
+oh-my-cli --attention
+oh-my-cli --store-doctor --strict
+
+# Safety / budgets
+oh-my-cli --trust-posture
+oh-my-cli --command-policy "git push --force"
+oh-my-cli -p "…" --approval-mode default --budget 1 --max-turns 20 --max-wall-time 15m
+
+# CI kit
+oh-my-cli --doctor
+oh-my-cli --repo-map
+oh-my-cli --plan "add a --quiet flag"
+oh-my-cli --verify-task
+oh-my-cli --review-change --base origin/main
+oh-my-cli --ci-handoff
+oh-my-cli --delivery-brief --ci-result pending
+oh-my-cli -p "…" --output json --summary
+```
+
+No keys belong in any of these commands. Token Plan credentials stay in your environment — never in this repo.
 
 ---
 
